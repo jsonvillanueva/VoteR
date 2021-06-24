@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "VoteR"
+version = "0.1.0"
+description = ""
+authors = ["Jason Villanueva <a@jsonvillanueva.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+python-dotenv = "*"
+discord = "^1.0.1"
+flask = "^2.0.1"
+replit = "^3.1.0"
+requests = "*"
+discord-py-slash-command = "^2.0"
+pymongo = "^3.11.4"
+
+[tool.poetry.dev-dependencies]
+
+[tool.poetry.dev-dependencies.black]
+version = "^20.8b1"
+allow-prereleases = false
+python = "^3.8"
+
+[build-system]
+requires = ["setuptools","poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
