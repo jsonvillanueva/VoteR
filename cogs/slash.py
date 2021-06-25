@@ -6,7 +6,7 @@ from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
 from discord_slash.utils.manage_commands import create_option
 from utils.base_cog import CustomCog
-from poll import Poll
+from utils.poll import Poll
 from textwrap import dedent
 from utils.constants import AZ_EMOJIS, GUILD_IDS, CLIENT
 from utils.functions import toast_message
@@ -32,14 +32,16 @@ class Slash(CustomCog):
                 description="Remove from the DB? Defaults to True; Enter 0 for False.",
                 option_type=4,
                 required=False,
-            )
+            ),
         ],
     )
     async def _close(self, ctx: SlashContext, poll_id: str, remove=1):
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
         polls = db.polls
-        c = polls.find({"_id":bson.ObjectId(poll_id)},{"options":1, "voters":1, "_id":0})
+        c = polls.find(
+            {"_id": bson.ObjectId(poll_id)}, {"options": 1, "voters": 1, "_id": 0}
+        )
         options, voters = None, None
         res = Counter()
         for cur in c:
@@ -48,12 +50,10 @@ class Slash(CustomCog):
 
         for voter in voters:
             res += Counter(voter["selection"])
-        embed = discord.Embed(
-            title="**Final Results**"
-        )
+        embed = discord.Embed(title="**Final Results**")
         for ((k, d), v) in zip(options.items(), res.values()):
             embed.add_field(name=f"{k} {d}", value=v, inline=False)
-        
+
         await ctx.send(embed=embed)
         if remove:
             query = {"_id": bson.ObjectId(poll_id)}
@@ -63,7 +63,6 @@ class Slash(CustomCog):
                 await toast_message(ctx, "Successfully deleted poll.")
             else:
                 await toast_message(ctx, "Poll not found.")
-
 
     @cog_ext.cog_slash(
         name="count",
@@ -82,11 +81,11 @@ class Slash(CustomCog):
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
         polls = db.polls
-        c = polls.find({"_id":bson.ObjectId(poll_id)},{"voters":1, "_id":0})
+        c = polls.find({"_id": bson.ObjectId(poll_id)}, {"voters": 1, "_id": 0})
         unique_voters = None
         for cur in c:
             unique_voters = len(cur["voters"])
-        if unique_voters > 1: 
+        if unique_voters > 1:
             await ctx.send(f"There has been {unique_voters} unique voters.")
         elif unique_voters == 1:
             await ctx.send(f"There has been {unique_voters} unique voter.")
@@ -210,9 +209,7 @@ class Slash(CustomCog):
     async def _poll(self, ctx: SlashContext, question, **kwargs):
         options = dict(zip(AZ_EMOJIS, kwargs.values()))
         voters = [{"user": ctx.author_id}]
-        poll = Poll(
-            options=options, voters=voters
-        )
+        poll = Poll(options=options, voters=voters)
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
         polls = db.polls  # Collection of polls

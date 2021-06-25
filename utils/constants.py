@@ -8,7 +8,7 @@ AZ_EMOJIS = [
     )
     for i in range(26)
 ]
-GUILD_IDS = [418633879587520520]
+GUILD_IDS = [418633879587520520, 842996863946326056]
 REPLIT = False
 ROOT_DIR: Path = Path(__file__).parent.parent.resolve()
 COGS_DIR: Path = ROOT_DIR / "cogs"

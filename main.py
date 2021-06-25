@@ -5,13 +5,15 @@ import discord
 from discord.ext import commands
 from discord.raw_models import RawReactionActionEvent
 from discord_slash import SlashCommand, SlashContext
+from discord_slash.model import SlashCommandPermissionType
+from discord_slash.utils.manage_commands import create_permission
 from dotenv import load_dotenv
 from utils.constants import GUILD_IDS, COGS, CLIENT
 from utils.functions import toast_message
 from textwrap import dedent
 
 bot = commands.Bot(command_prefix="!")  # Voter#3125
-slash = SlashCommand(bot, sync_on_cog_reload=True)
+slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
 for cog in COGS:
     bot.load_extension(cog)
 
@@ -19,9 +21,21 @@ for cog in COGS:
 @bot.event
 async def on_ready():
     print(f"We have logged in as {bot.user}")
+    await bot.change_presence(
+        activity=discord.Activity(
+            name="for /help and other commands.",
+            type=discord.ActivityType.watching
+        ),
+    )
 
 
-@slash.slash(name="r", description="Reload a specific cog.", guild_ids=GUILD_IDS)
+@slash.slash(name="r", description="Reload a specific cog.", guild_ids=GUILD_IDS, default_permission=False)
+@slash.permission(
+    guild_id=GUILD_IDS[0],
+    permissions=[
+        create_permission(407970334013128705, SlashCommandPermissionType.USER, True)
+    ],
+)
 async def r(ctx: SlashContext, extension: str):
     await toast_message(ctx, f"Trying to reload {extension}...")
     try:
@@ -31,7 +45,13 @@ async def r(ctx: SlashContext, extension: str):
         await toast_message(ctx, e)
 
 
-@slash.slash(name="rall", description="Reload all cogs.", guild_ids=GUILD_IDS)
+@slash.slash(name="rall", description="Reload all cogs.", guild_ids=GUILD_IDS, default_permission=False)
+@slash.permission(
+    guild_id=GUILD_IDS[0],
+    permissions=[
+        create_permission(407970334013128705, SlashCommandPermissionType.USER, True)
+    ],
+)
 async def rall(ctx: SlashContext):
     await toast_message(ctx, "Reloading all extensions.")
     try:
@@ -87,7 +107,7 @@ async def on_raw_reaction_add(payload: RawReactionActionEvent):
         reacts = m.reactions
         selection = {}
         for r in reacts[1:]:
-            selection.update({str(r.emoji): r.count-1})
+            selection.update({str(r.emoji): r.count - 1})
 
         e: discord.Embed = m.embeds[0]
         string = e.title.split("\n")

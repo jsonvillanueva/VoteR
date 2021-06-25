@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "VoteR"
 version = "0.1.0"
-description = ""
+description = "A Discord bot for anonymous approval voting"
 authors = ["Jason Villanueva <a@jsonvillanueva.com>"]
 
 [tool.poetry.dependencies]
@@ -9,8 +9,6 @@ python = "^3.8"
 python-dotenv = "*"
 discord = "^1.0.1"
 flask = "^2.0.1"
-replit = "^3.1.0"
-requests = "*"
 discord-py-slash-command = "^2.0"
 pymongo = "^3.11.4"
 

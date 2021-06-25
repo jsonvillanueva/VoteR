@@ -21,7 +21,6 @@ async def throwaway_message(bot: commands.Bot, ctx: SlashContext, m: discord.Mes
 
 
 async def toast_message(ctx: SlashContext, m: str, t=1.5):
-    print(m)
     msg = await ctx.send(m)
     await asyncio.sleep(t)
     await msg.delete()
