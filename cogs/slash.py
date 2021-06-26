@@ -48,11 +48,12 @@ class Slash(CustomCog):
             voters: list[dict] = cur["voters"]
             options: list[dict] = cur["options"]
 
+        print(voters)
         for voter in voters:
             res += Counter(voter["selection"])
         embed = discord.Embed(title="**Final Results**")
-        for ((k, d), v) in zip(options.items(), res.values()):
-            embed.add_field(name=f"{k} {d}", value=v, inline=False)
+        for (k, v) in res.items():
+            embed.add_field(name=f"{k} {options[k]}", value=v, inline=False)
 
         await ctx.send(embed=embed)
         if remove:
@@ -208,7 +209,8 @@ class Slash(CustomCog):
     )
     async def _poll(self, ctx: SlashContext, question, **kwargs):
         options = dict(zip(AZ_EMOJIS, kwargs.values()))
-        voters = [{"user": ctx.author_id}]
+        no_selection = {o: 0 for o in options.keys()}
+        voters = [{"user": ctx.author_id, "selection": no_selection}]
         poll = Poll(options=options, voters=voters)
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
@@ -221,7 +223,7 @@ class Slash(CustomCog):
             description="Anonymous Approval Voting",
         )
         embed.set_author(
-            name=f" >> {ctx.author.display_name}", icon_url=ctx.author.avatar_url
+            name=f"Author: {ctx.author.display_name}", icon_url=ctx.author.avatar_url
         )
         embed.add_field(name="**Poll question:**", value=question, inline=True)
 
