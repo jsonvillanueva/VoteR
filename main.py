@@ -1,16 +1,18 @@
 import os
-import bson
 import discord
 
+from bson import ObjectId
+from discord import user
 from discord.ext import commands
 from discord.raw_models import RawReactionActionEvent
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.model import SlashCommandPermissionType
-from discord_slash.utils.manage_commands import create_permission
+from discord_slash.utils.manage_commands import create_option, create_permission
 from dotenv import load_dotenv
 from utils.constants import GUILD_IDS, COGS, CLIENT
 from utils.functions import toast_message
 from textwrap import dedent
+from typing import Optional
 
 bot = commands.Bot(command_prefix="!")  # Voter#3125
 slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
@@ -23,44 +25,48 @@ async def on_ready():
     print(f"We have logged in as {bot.user}")
     await bot.change_presence(
         activity=discord.Activity(
-            name="for /help and other commands.",
-            type=discord.ActivityType.watching
+            name="for /help and other commands.", type=discord.ActivityType.watching
         ),
     )
 
 
-@slash.slash(name="r", description="Reload a specific cog.", guild_ids=GUILD_IDS, default_permission=False)
+@slash.slash(
+    name="r",
+    description="Reload a specific cog.",
+    guild_ids=GUILD_IDS,
+    default_permission=False,
+    options=[
+        create_option(
+            name="extension",
+            description="The cog to reload.",
+            option_type=3,
+            required=False,
+        )
+    ],
+)
 @slash.permission(
     guild_id=GUILD_IDS[0],
     permissions=[
         create_permission(407970334013128705, SlashCommandPermissionType.USER, True)
     ],
 )
-async def r(ctx: SlashContext, extension: str):
-    await toast_message(ctx, f"Trying to reload {extension}...")
-    try:
-        bot.reload_extension(f"cogs.{extension}")
-        await toast_message(ctx, f"Successfully reloaded {extension}")
-    except Exception as e:
-        await toast_message(ctx, e)
+async def r(ctx: SlashContext, extension: Optional[str] = None):
+    if extension is None:
+        await toast_message(ctx, "Reloading all extensions.")
+        try:
+            for cog in COGS:
+                bot.reload_extension(cog)
+            await toast_message(ctx, "Successfully reloaded all.")
 
-
-@slash.slash(name="rall", description="Reload all cogs.", guild_ids=GUILD_IDS, default_permission=False)
-@slash.permission(
-    guild_id=GUILD_IDS[0],
-    permissions=[
-        create_permission(407970334013128705, SlashCommandPermissionType.USER, True)
-    ],
-)
-async def rall(ctx: SlashContext):
-    await toast_message(ctx, "Reloading all extensions.")
-    try:
-        for cog in COGS:
-            bot.reload_extension(cog)
-        await toast_message(ctx, "Successfully reloaded all.")
-
-    except Exception as e:
-        await toast_message(ctx, e)
+        except Exception as e:
+            await toast_message(ctx, e)
+    else:
+        await toast_message(ctx, f"Trying to reload {extension}...")
+        try:
+            bot.reload_extension(f"cogs.{extension}")
+            await toast_message(ctx, f"Successfully reloaded {extension}")
+        except Exception as e:
+            await toast_message(ctx, e)
 
 
 @slash.slash(name="help", description="Information on commands.", guild_ids=GUILD_IDS)
@@ -116,10 +122,23 @@ async def on_raw_reaction_add(payload: RawReactionActionEvent):
         poll_id = poll_id.split(" ")[1]
         db = CLIENT[gid]
         polls = db.polls
-        query = {"_id": bson.ObjectId(poll_id), "voters.user": user_id}
-        value = {"$set": {"voters.$.selection": selection}}
-        result = polls.update_one(query, value)
-        print(result.raw_result, result.matched_count)
+
+        # Insert if not exist
+        polls.update(
+            {
+                "_id": ObjectId(poll_id),
+                "voters": {"$not": {"$elemMatch": {"user": user_id}}},
+            },
+            {"$addToSet": {"voters": {"user": user_id, "selection": selection}}},
+            upsert=False,
+            multi=False,
+        )
+        polls.update(
+            {"_id": ObjectId(poll_id), "voters.user": user_id},
+            {"$set": {"voters.$.selection": selection}},
+            upsert=False,
+            multi=False,
+        )
         await toast_message(channel, "Vote received!")
 
 
