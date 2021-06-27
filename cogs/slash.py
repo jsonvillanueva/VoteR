@@ -49,6 +49,7 @@ class Slash(CustomCog):
         options: list[dict] = poll_info["options"]
         author = poll_info["author"]
         avatar_url = poll_info["avatar_url"]
+        question = poll_info["question"]
 
         for voter in voters:
             for k, v in voter["selection"].items():
@@ -60,6 +61,7 @@ class Slash(CustomCog):
         embed.set_author(
             name=f"Author: {author}", icon_url=f"https://cdn.discordapp.com{avatar_url}"
         )
+        embed.add_field(name="**Poll question:**", value=question, inline=True)
         for k, v in sorted(res.items(), key=lambda x: x[1], reverse=True):
             embed.add_field(name=f"{k} {options[k]}", value=v, inline=False)
 
