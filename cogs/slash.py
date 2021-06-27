@@ -1,7 +1,7 @@
 import asyncio
 import bson
 import discord
-from collections import Counter
+from collections import Counter, defaultdict
 from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
 from discord_slash.utils.manage_commands import create_option
@@ -39,21 +39,35 @@ class Slash(CustomCog):
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
         polls = db.polls
-        c = polls.find(
-            {"_id": bson.ObjectId(poll_id)}, {"options": 1, "voters": 1, "_id": 0}
-        )
-        options, voters = None, None
-        res = Counter()
+        c = polls.find({"_id": bson.ObjectId(poll_id)})
+        poll_info, voters = None, []
+        res = defaultdict(int)
         for cur in c:
-            voters: list[dict] = cur["voters"]
-            options: list[dict] = cur["options"]
+            poll_info = cur
+        if "voters" in poll_info:  # Since there aren't any voters at poll creation time
+            voters: list[dict] = poll_info["voters"]
+        options: list[dict] = poll_info["options"]
+        author = poll_info["author"]
+        avatar_url = poll_info["avatar_url"]
 
-        print(voters)
         for voter in voters:
-            res += Counter(voter["selection"])
-        embed = discord.Embed(title="**Final Results**")
-        for (k, v) in res.items():
+            for k, v in voter["selection"].items():
+                res[k] += v
+
+        embed = discord.Embed(
+            title=f"Poll ID: {poll_id}", description="**Final Results**"
+        )
+        embed.set_author(
+            name=f"Author: {author}", icon_url=f"https://cdn.discordapp.com{avatar_url}"
+        )
+        for k, v in sorted(res.items(), key=lambda x: x[1], reverse=True):
             embed.add_field(name=f"{k} {options[k]}", value=v, inline=False)
+
+        total_voters = str(len(voters))
+        embed.add_field(
+            name=f"Total voters: {total_voters}",
+            value=f"Delete specified: {'True' if remove else 'False'}",
+        )
 
         await ctx.send(embed=embed)
         if remove:
@@ -82,10 +96,11 @@ class Slash(CustomCog):
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
         polls = db.polls
-        c = polls.find({"_id": bson.ObjectId(poll_id)}, {"voters": 1, "_id": 0})
-        unique_voters = None
-        for cur in c:
-            unique_voters = len(cur["voters"])
+        cur = polls.find({"_id": bson.ObjectId(poll_id)}, {"voters": 1, "_id": 0})
+        unique_voters = 0
+        for c in cur:
+            if "voters" in c:
+                unique_voters = len(c["voters"])
         if unique_voters > 1:
             await ctx.send(f"There has been {unique_voters} unique voters.")
         elif unique_voters == 1:
@@ -107,7 +122,6 @@ class Slash(CustomCog):
         ],
     )
     async def _delete(self, ctx: SlashContext, poll_id: str):
-        print(f"Deleting {poll_id}...")
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
         polls = db.polls
@@ -210,11 +224,17 @@ class Slash(CustomCog):
     async def _poll(self, ctx: SlashContext, question, **kwargs):
         options = dict(zip(AZ_EMOJIS, kwargs.values()))
         no_selection = {o: 0 for o in options.keys()}
-        voters = [{"user": ctx.author_id, "selection": no_selection}]
-        poll = Poll(options=options, voters=voters)
+        # voters = [{"user": ctx.author_id, "selection": no_selection}]
+        poll = Poll(
+            author=ctx.author.name,
+            avatar_url=ctx.author.avatar_url._url,
+            channel_id=ctx.channel_id,
+            options=options,
+            question=question,
+        )
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
-        polls = db.polls  # Collection of polls
+        polls = db.polls
         result = polls.insert_one(poll)
         poll.id = result.inserted_id
 
@@ -230,7 +250,7 @@ class Slash(CustomCog):
         for k, v in poll.options.items():
             embed.add_field(name=k, value=v, inline=False)
 
-        msg = await ctx.send(
+        await ctx.send(
             embeds=[embed],
         )
 
@@ -253,8 +273,15 @@ class Slash(CustomCog):
         polls = db.polls
         cursor = polls.find({"_id": bson.ObjectId(poll_id)})
         options = None
+        channel_id = None
         for p in cursor:
             options = p["options"]
+            channel_id = p["channel_id"]
+        if ctx.channel_id != channel_id:
+            await ctx.send(
+                f"{ctx.author}, you must use `/vote` in the channel the poll was created in."
+            )
+            return
         embed = discord.Embed(
             title=dedent(
                 f"""

@@ -124,20 +124,18 @@ async def on_raw_reaction_add(payload: RawReactionActionEvent):
         polls = db.polls
 
         # Insert if not exist
-        polls.update(
+        polls.update_one(
             {
                 "_id": ObjectId(poll_id),
                 "voters": {"$not": {"$elemMatch": {"user": user_id}}},
             },
             {"$addToSet": {"voters": {"user": user_id, "selection": selection}}},
             upsert=False,
-            multi=False,
         )
-        polls.update(
+        polls.update_one(
             {"_id": ObjectId(poll_id), "voters.user": user_id},
             {"$set": {"voters.$.selection": selection}},
             upsert=False,
-            multi=False,
         )
         await toast_message(channel, "Vote received!")
 
