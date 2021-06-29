@@ -1,7 +1,7 @@
 import asyncio
 import bson
 import discord
-from collections import Counter, defaultdict
+from collections import defaultdict
 from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
 from discord_slash.utils.manage_commands import create_option
@@ -40,7 +40,7 @@ class Slash(CustomCog):
         db = CLIENT[gid]
         polls = db.polls
         c = polls.find({"_id": bson.ObjectId(poll_id)})
-        poll_info, voters = None, []
+        poll_info, voters = {}, []
         res = defaultdict(int)
         for cur in c:
             poll_info = cur
@@ -273,7 +273,15 @@ class Slash(CustomCog):
         gid = str(ctx.guild_id)
         db = CLIENT[gid]
         polls = db.polls
-        cursor = polls.find({"_id": bson.ObjectId(poll_id)})
+        cursor = None
+        try:
+            cursor = polls.find({"_id": bson.ObjectId(poll_id)})
+        except:
+            await ctx.author.send(
+                f"You tried voting with poll_id: {poll_id} which is an invalid poll ID. Please try again."
+            )
+            return
+
         options = None
         channel_id = None
         for p in cursor:
