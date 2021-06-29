@@ -1,7 +1,10 @@
 import pymongo
+import os
+from dotenv import load_dotenv
 from pathlib import Path
 
-CLIENT = pymongo.MongoClient("localhost", 27017)
+load_dotenv()
+CLIENT = pymongo.MongoClient(os.getenv("CONNECTION_STRING"))
 AZ_EMOJIS = [
     (b"\\U0001f1a".replace(b"a", bytes(hex(224 + (6 + i))[2:], "utf-8"))).decode(
         "unicode-escape"
